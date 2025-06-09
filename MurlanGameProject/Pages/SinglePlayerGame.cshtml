@@ -1,0 +1,1149 @@
+﻿@page
+@model MuranGameProject.Pages.SinglePlayerGameModel
+@{
+    Layout = null;
+    ViewData["Title"] = "Single Player Game";
+}
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Single Player - Muran</title>
+    <link rel="stylesheet" href="~/lib/deck-of-cards/example.css" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/zebra_dialog@latest/dist/css/flat/zebra_dialog.min.css" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.css" />
+    <style>
+        #playBtn, #passBtn, #replayBtn {
+            bottom: 5%;
+            right: 5%;
+            position: fixed;
+        }
+
+        #passBtn {
+            bottom: 12%;
+        }
+
+        #replayBtn {
+            bottom: 19%;
+        }
+
+        #gameModeBtn {
+            top: 2%;
+            right: 2%;
+            position: fixed;
+        }
+
+        #fieldContainer {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+        }
+
+        #container {
+            top: 30%;
+            left: 10%;
+        }
+
+        .card {
+            z-index: 0;
+        }
+
+        .face {
+            cursor: pointer;
+        }
+
+        .btn-custom {
+            background: linear-gradient(135deg, #6e8efb, #a777e3);
+            color: #ffffff !important;
+            border: none !important;
+            border-radius: 12px;
+            padding: 12px 24px;
+            font-size: 16px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 1.2px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+            transition: all 0.3s ease;
+            cursor: pointer;
+            outline: none;
+        }
+
+            .btn-custom:hover {
+                background: linear-gradient(135deg, #5a78e0, #8e5ed1);
+                box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
+                transform: translateY(-3px);
+            }
+
+            .btn-custom:active {
+                transform: translateY(0);
+                box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+            }
+
+        .profile-picture {
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            object-fit: cover;
+            border: 2px solid #ffffff;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+            position: fixed;
+            z-index: 1000;
+        }
+
+        #player-profile {
+            bottom: 0%;
+            left: 50%;
+            transform: translateX(-50%);
+        }
+
+        #opponent1-profile {
+            top: 0%;
+            left: 50%;
+            transform: translateX(-50%);
+        }
+
+        #opponent2-profile {
+            top: 50%;
+            left: 2%;
+            transform: translateY(-50%);
+        }
+
+        #opponent3-profile {
+            top: 50%;
+            right: 5%;
+            transform: translateY(-50%);
+        }
+    </style>
+</head>
+<body>
+    <div id="container"></div>
+    <div id="fieldContainer"></div>
+    <input id="playBtn" class="btn-custom" type="button" value="  Play  " onclick="performPlay()" />
+    <input id="passBtn" class="btn-custom" type="button" value="  Pass  " onclick="passPlay()" />
+    <input id="replayBtn" class="btn-custom" type="button" value="Replay" onclick="replayGame()" />
+    <input id="gameModeBtn" class="btn-custom" type="button" value="Main Menu" onclick="window.location.href='/GameMode'" />
+
+    <!-- Profile Pictures -->
+    <img id="player-profile" class="profile-picture" src="@Model.UserProfilePicture" alt="Player Profile" />
+    <img id="opponent1-profile" class="profile-picture" src="" alt="Opponent 1 Profile" />
+    <img id="opponent2-profile" class="profile-picture" src="" alt="Opponent 2 Profile" />
+    <img id="opponent3-profile" class="profile-picture" src="" alt="Opponent 3 Profile" />
+
+    @Html.AntiForgeryToken()
+
+    <script src="~/lib/jquery/jquery.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.js"></script>
+    <script src="~/lib/deck-of-cards/dist/deck.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/zebra_dialog/dist/zebra_dialog.min.js"></script>
+    <script>
+        console.log('Deck library:', typeof Deck);
+        var $container = document.getElementById('container');
+        var $fieldContainer = document.getElementById('fieldContainer');
+        var deck = Deck(false);
+        var blackJoker = Deck.Card(52);
+        var redJoker = Deck.Card(53);
+        blackJoker.setSide('back');
+        redJoker.setSide('back');
+        deck.cards.push(blackJoker);
+        deck.cards.push(redJoker);
+        deck.mount($container);
+        blackJoker.mount(deck.$el);
+        redJoker.mount(deck.$el);
+
+        var _hand = [];
+        var _opponentHands = [[], [], []];
+        var _play = [];
+        var _playSize = 0;
+        var _field = [];
+        var _previousField = [];
+        var _turn = 0;
+        var _isOut = [false, false, false, false];
+        var _zIndex = 0;
+        var _playersPassed = 0;
+        var _outOrder = [];
+        var _lastPlayer = 0;
+        var _isFirstPlay = true; // Track if it's the first play of the game
+
+        var opponentProfilePictures = [
+            '/images/profile3.png',
+        ];
+
+        function assignOpponentProfilePictures() {
+            var shuffledPictures = opponentProfilePictures.sort(() => Math.random() - 0.5);
+            document.getElementById('opponent1-profile').src = shuffledPictures[0];
+            document.getElementById('opponent2-profile').src = shuffledPictures[0];
+            document.getElementById('opponent3-profile').src = shuffledPictures[0];
+        }
+
+        toastr.options = {
+            "closeButton": true,
+            "positionClass": "toast-top-right",
+            "timeOut": "3000",
+            "progressBar": true
+        };
+
+        function customNotify(message, type) {
+            switch (type) {
+                case "info": toastr.info(message); break;
+                case "success": toastr.success(message); break;
+                case "error": toastr.error(message); break;
+                default: toastr.info(message);
+            }
+        }
+
+        function getCardRank(card, isScale = false) {
+            var parts = card.split("|");
+            var suit = parts[2];
+            var rank = parseInt(parts[1]);
+            if (suit === "joker") {
+                return rank === 3 ? 17 : 16;
+            }
+            if (isScale) {
+                if (rank === 1) return 14;
+                if (rank === 2) return 2;
+                return rank;
+            }
+            if (rank === 1) return 14;
+            if (rank === 2) return 15;
+            return rank;
+        }
+
+        function getCombinationType(cards) {
+            if (cards.length === 0) return null;
+            if (cards.length === 1) return "single";
+            if (cards.length === 2) {
+                var rank1 = getCardRank(cards[0]);
+                var rank2 = getCardRank(cards[1]);
+                return rank1 === rank2 ? "double" : null;
+            }
+            if (cards.length === 3) {
+                var rank1 = getCardRank(cards[0]);
+                var rank2 = getCardRank(cards[1]);
+                var rank3 = getCardRank(cards[2]);
+                return (rank1 === rank2 && rank2 === rank3) ? "triple" : null;
+            }
+            if (cards.length === 4) {
+                var rank1 = getCardRank(cards[0]);
+                var rank2 = getCardRank(cards[1]);
+                var rank3 = getCardRank(cards[2]);
+                var rank4 = getCardRank(cards[3]);
+                return (rank1 === rank2 && rank2 === rank3 && rank3 === rank4) ? "quadruple" : null;
+            }
+            if (cards.length >= 5) {
+                var ranks = cards.map(card => getCardRank(card, true)).sort((a, b) => a - b);
+                var valid = true;
+                if (cards.some(card => card.includes("joker"))) return null;
+                for (var i = 1; i < ranks.length; i++) {
+                    if (ranks[i] !== ranks[i - 1] + 1) {
+                        valid = false;
+                        break;
+                    }
+                }
+                return valid ? "scale" : null;
+            }
+            return null;
+        }
+
+        $(document).ready(function () {
+            assignOpponentProfilePictures();
+
+            $.ajax({
+                url: '/SinglePlayerGame?handler=GetInitialHands',
+                method: 'POST',
+                headers: { "RequestVerificationToken": $('input[name="__RequestVerificationToken"]').val() },
+                contentType: 'application/json; charset=utf-8',
+                dataType: 'json',
+                success: function (response) {
+                    console.log("Initial hands response:", response);
+                    console.log("/////////////////////////////////////////////////////");
+                    const hands = response.hands;
+                    console.log("/////////////////////////////////////////////////////");
+
+                    const profilePicture = response.profilePicture;
+
+                    if (profilePicture) {
+                        document.getElementById('player-profile').src = profilePicture;
+                        console.log("Updated player profile picture to:", profilePicture);
+                    }
+                    console.log("/////////////////////////////////////////////////////");
+                    console.log("list of hands :", hands);
+                    console.log("/////////////////////////////////////////////////////");
+
+                    _hand = hands[3];
+                    _opponentHands[0] = hands[2];
+                    _opponentHands[1] = hands[1];
+                    _opponentHands[2] = hands[0];
+                    spreadCards();
+                    console.log("Player hand:", _hand);
+                    console.log("Opponent 1 hand:", _opponentHands[0]);
+                    console.log("Opponent 2 hand:", _opponentHands[1]);
+                    console.log("Opponent 3 hand:", _opponentHands[2]);
+
+                    setTimeout(function () {
+                        if (_hand.some(card => card.includes("spades") && card.includes("rank3"))) {
+                            _turn = 0;
+                            customNotify("You have the 3 of spades, you must play it to start the game.", "info");
+                            console.log("Turn set to player (0)");
+                        } else if (_opponentHands[0].some(card => card.includes("spades") && card.includes("rank3"))) {
+                            _turn = 1;
+                            customNotify("Opponent 1 has the 3 of spades, they will start.", "info");
+                            console.log("Turn set to opponent 1");
+                            opponentTurn();
+                        } else if (_opponentHands[1].some(card => card.includes("spades") && card.includes("rank3"))) {
+                            _turn = 2;
+                            customNotify("Opponent 2 has the 3 of spades, they will start.", "info");
+                            console.log("Turn set to opponent 2");
+                            opponentTurn();
+                        } else if (_opponentHands[2].some(card => card.includes("spades") && card.includes("rank3"))) {
+                            _turn = 3;
+                            customNotify("Opponent 3 has the 3 of spades, they will start.", "info");
+                            console.log("Turn set to opponent 3");
+                            opponentTurn();
+                        }
+                    }, 2500);
+                },
+                error: function (xhr, status, error) {
+                    console.error("Error fetching initial hands:", status, error);
+                }
+            });
+
+            $(document).click(function (event) {
+                var div = $(event.target).parent().prop('className');
+                var cl = $(event.target).prop('className');
+                if (cl === 'face' && _turn === 0 && !_isOut[0]) {
+                    var divS = div.split(" ");
+                    _hand.forEach(function (element) {
+                        var elS = element.split("|");
+                        if (divS[2] === elS[3] && divS[1] === elS[2]) {
+                            var index = elS[0];
+                            var card = deck.cards[index];
+                            if (_play.includes(element)) {
+                                card.animateTo({
+                                    delay: 30,
+                                    duration: 300,
+                                    ease: 'quartOut',
+                                    y: 450
+                                });
+                                _play = _play.filter(e => e !== element);
+                                _playSize--;
+                            } else {
+                                card.animateTo({
+                                    delay: 30,
+                                    duration: 300,
+                                    ease: 'quartOut',
+                                    y: 430
+                                });
+                                _play.push(element);
+                                _playSize++;
+                            }
+                            console.log("Current _play:", _play);
+                        }
+                    });
+                }
+            });
+        });
+
+        function spreadCards() {
+            var dis = 0;
+            _hand.forEach(function (element) {
+                var elS = element.split("|");
+                var card = deck.cards[elS[0]];
+                if (card) {
+                    if (card.side === 'front') {
+                        card.$el.className = `card ${elS[2]} ${elS[3]}`;
+                    } else {
+                        card.$el.className = 'card';
+                    }
+                    card.$el.style['z-index'] = _zIndex++;
+                    card.animateTo({
+                        delay: 1000 + dis,
+                        duration: 1000,
+                        ease: 'quartOut',
+                        x: 30 + dis,
+                        y: 450
+                    });
+                    dis += 80;
+                }
+            });
+            setTimeout(flipHand, 2500);
+
+            dis = 0;
+            _opponentHands[0].forEach(function (element) {
+                var elS = element.split("|");
+                $('.card.' + elS[2] + '.' + elS[3]).css('z-index', _zIndex++);
+                deck.cards[elS[0]].animateTo({
+                    delay: 1000 + dis,
+                    duration: 1000,
+                    ease: 'quartOut',
+                    x: 200 + dis,
+                    y: -80
+                });
+                dis += 50;
+            });
+
+            dis = 0;
+            _opponentHands[1].forEach(function (element) {
+                var elS = element.split("|");
+                $('.card.' + elS[2] + '.' + elS[3]).css('z-index', _zIndex++);
+                deck.cards[elS[0]].animateTo({
+                    delay: 1000 + dis,
+                    duration: 1000,
+                    ease: 'quartOut',
+                    x: 30,
+                    y: 0 + dis
+                });
+                dis += 20;
+            });
+
+            dis = 0;
+            _opponentHands[2].forEach(function (element) {
+                var elS = element.split("|");
+                $('.card.' + elS[2] + '.' + elS[3]).css('z-index', _zIndex++);
+                deck.cards[elS[0]].animateTo({
+                    delay: 1000 + dis,
+                    duration: 1000,
+                    ease: 'quartOut',
+                    x: 1070,
+                    y: 0 + dis
+                });
+                dis += 20;
+            });
+        }
+
+        function flipHand() {
+            _hand.forEach(function (element) {
+                var index = element.split("|")[0];
+                deck.cards[index].setSide('front');
+            });
+        }
+
+        function resetCards() {
+            console.log("resetCards called, _play:", _play);
+            _play.forEach(function (element) {
+                var index = element.split("|")[0];
+                deck.cards[index].animateTo({
+                    delay: 300,
+                    duration: 300,
+                    ease: 'quartOut',
+                    y: 450
+                });
+            });
+            _play = [];
+            _playSize = 0;
+        }
+
+        function clearPreviousField() {
+            console.log("clearPreviousField called, _previousField:", _previousField);
+            _previousField.forEach(function (element) {
+                var index = element.split("|")[0];
+                deck.cards[index].animateTo({
+                    delay: 0,
+                    duration: 300,
+                    ease: 'quartOut',
+                    x: -1000,
+                    y: -1000
+                });
+            });
+            _previousField = [];
+        }
+
+        function clearCurrentField() {
+            console.log("clearCurrentField called, _field:", _field);
+            _field.forEach(function (element) {
+                var index = element.split("|")[0];
+                deck.cards[index].animateTo({
+                    delay: 0,
+                    duration: 300,
+                    ease: 'quartOut',
+                    x: -1000,
+                    y: -1000
+                });
+            });
+        }
+
+        function validateHand() {
+            console.log("validateHand called, _play:", _play);
+            if (_play.length === 0) return false;
+
+            var jokerCount = _play.filter(card => card.includes("joker")).length;
+            if (jokerCount > 1) {
+                return false;
+            }
+
+            var type = getCombinationType(_play);
+            console.log("Combination type:", type);
+            return type !== null;
+        }
+
+        function validatePlay() {
+            console.log("validatePlay called, _play:", _play, "_field:", _field);
+            if (!validateHand()) return false;
+
+            var playType = getCombinationType(_play);
+            if (_field.length === 0) {
+                // For the first play, ensure the 3 of spades is included if it's the player's first move
+                if (_isFirstPlay && _hand.some(card => card.includes("spades") && card.includes("rank3"))) {
+                    if (!_play.some(card => card.includes("spades") && card.includes("rank3"))) {
+                        return false;
+                    }
+                }
+                return true;
+            }
+            var fieldType = getCombinationType(_field);
+            if (playType !== fieldType || _play.length !== _field.length) return false;
+
+            if (playType === "scale") {
+                var playRanks = _play.map(card => getCardRank(card, true)).sort((a, b) => b - a);
+                var fieldRanks = _field.map(card => getCardRank(card, true)).sort((a, b) => b - a);
+                return playRanks[0] > fieldRanks[0];
+            } else {
+                var playRank = getCardRank(_play[0]);
+                var fieldRank = getCardRank(_field[0]);
+                return playRank > fieldRank;
+            }
+        }
+
+        function passPlay() {
+            console.log("passPlay called, _turn:", _turn, "_isOut[0]:", _isOut[0]);
+            if (_turn === 0 && !_isOut[0]) {
+                // Prevent passing on the first play if the player has the 3 of spades
+                if (_isFirstPlay && _hand.some(card => card.includes("spades") && card.includes("rank3"))) {
+                    customNotify("You must play the 3 of spades to start the game!", "error");
+                    return;
+                }
+                resetCards();
+                _playersPassed++;
+                console.log("Player passed, playersPassed:", _playersPassed);
+
+                if (_playersPassed === 3) {
+                    clearPreviousField();
+                    clearCurrentField();
+                    _field = [];
+                    _previousField = [];
+                    _playersPassed = 0;
+                    _turn = _lastPlayer;
+                    console.log("Field cleared, all passed, turn set to last player:", _lastPlayer);
+
+                    if (_isOut[_lastPlayer]) {
+                        console.log("Last player is out, finding next valid player");
+                        nextValidPlayer();
+                        return;
+                    }
+
+                    if (_lastPlayer === 0) {
+                        customNotify("Everyone passed! You can play any valid combination now.", "success");
+                    } else {
+                        customNotify(`Everyone passed! Opponent ${_lastPlayer} will start.`, "info");
+                        opponentTurn();
+                    }
+                    return;
+                }
+
+                customNotify("You passed!", "info");
+                _turn = 1;
+                opponentTurn();
+            } else {
+                customNotify("Please wait for your turn!!", "error");
+            }
+        }
+
+        function rmPlayFromHand() {
+            var newHand = [];
+            _hand.forEach(function (handCard) {
+                var playIsInHand = false;
+                _play.forEach(function (playCard) {
+                    if (handCard.split("|")[0] === playCard.split("|")[0]) playIsInHand = true;
+                });
+                if (!playIsInHand) newHand.push(handCard);
+            });
+            _hand = newHand;
+            console.log("Updated player hand after play:", _hand);
+        }
+
+        function simpleAIPlay(hand) {
+            console.log("AI hand:", hand, "Field:", _field);
+            var fieldType = _field.length > 0 ? getCombinationType(_field) : null;
+            var fieldRank = _field.length > 0 ? getCardRank(_field[0], fieldType === "scale") : 0;
+            var validPlays = [];
+
+            function hasTooManyJokers(cards) {
+                let jokerCount = cards.filter(card => card.includes("joker")).length;
+                return jokerCount > 1;
+            }
+
+            if (_field.length === 0) {
+                // For the first play, if the AI has the 3 of spades, it must play it
+                if (_isFirstPlay && hand.some(card => card.includes("spades") && card.includes("rank3"))) {
+                    var threeOfSpades = hand.find(card => card.includes("spades") && card.includes("rank3"));
+                    validPlays.push([threeOfSpades]);
+                } else {
+                    var rankCounts = {};
+                    hand.forEach(card => {
+                        var rank = getCardRank(card);
+                        rankCounts[rank] = (rankCounts[rank] || 0) + 1;
+                    });
+
+                    for (var rank in rankCounts) {
+                        if (rankCounts[rank] >= 4) {
+                            var cards = hand.filter(card => getCardRank(card) === parseInt(rank)).slice(0, 4);
+                            if (!hasTooManyJokers(cards)) {
+                                validPlays.push(cards);
+                            }
+                        }
+                    }
+
+                    if (validPlays.length === 0) {
+                        for (var rank in rankCounts) {
+                            if (rankCounts[rank] >= 3) {
+                                var cards = hand.filter(card => getCardRank(card) === parseInt(rank)).slice(0, 3);
+                                if (!hasTooManyJokers(cards)) {
+                                    validPlays.push(cards);
+                                }
+                            }
+                        }
+                    }
+
+                    if (validPlays.length === 0) {
+                        for (var rank in rankCounts) {
+                            if (rankCounts[rank] >= 2) {
+                                var cards = hand.filter(card => getCardRank(card) === parseInt(rank)).slice(0, 2);
+                                if (!hasTooManyJokers(cards)) {
+                                    validPlays.push(cards);
+                                }
+                            }
+                        }
+                    }
+
+                    var nonJokerCards = hand.filter(card => !card.includes("joker"));
+                    var ranks = nonJokerCards.map(card => getCardRank(card, true));
+                    var uniqueRanks = [...new Set(ranks)].sort((a, b) => a - b);
+
+                    for (var length = 5; length <= uniqueRanks.length; length++) {
+                        for (var i = 0; i <= uniqueRanks.length - length; i++) {
+                            var sequence = uniqueRanks.slice(i, i + length);
+                            var isValidSequence = true;
+
+                            for (var j = 1; j < sequence.length; j++) {
+                                if (sequence[j] !== sequence[j - 1] + 1) {
+                                    isValidSequence = false;
+                                    break;
+                                }
+                            }
+
+                            if (isValidSequence) {
+                                var scaleCards = [];
+                                for (var k = 0; k < sequence.length; k++) {
+                                    var rankToFind = sequence[k];
+                                    var cardOfRank = nonJokerCards.find(card => getCardRank(card, true) === rankToFind);
+                                    if (cardOfRank) {
+                                        scaleCards.push(cardOfRank);
+                                    }
+                                }
+
+                                if (scaleCards.length === length) {
+                                    validPlays.push(scaleCards);
+                                }
+                            }
+                        }
+                    }
+
+                    if (validPlays.length === 0) {
+                        hand.forEach(card => {
+                            validPlays.push([card]);
+                        });
+
+                        validPlays.sort((a, b) => getCardRank(a[0]) - getCardRank(b[0]));
+                    }
+                }
+
+                if (validPlays.length > 0) {
+                    validPlays.sort((a, b) => {
+                        var avgRankA = a.reduce((sum, card) => sum + getCardRank(card), 0) / a.length;
+                        var avgRankB = b.reduce((sum, card) => sum + getCardRank(card), 0) / b.length;
+                        return avgRankA - avgRankB;
+                    });
+
+                    return validPlays[0];
+                }
+            } else {
+                if (!fieldType || fieldType === "single") {
+                    validPlays = hand.filter(card => getCardRank(card) > fieldRank).map(card => [card]);
+                }
+                if (!fieldType || fieldType === "double") {
+                    var rankCounts = {};
+                    hand.forEach(card => {
+                        var rank = getCardRank(card);
+                        rankCounts[rank] = (rankCounts[rank] || 0) + 1;
+                    });
+                    for (var rank in rankCounts) {
+                        if (rankCounts[rank] >= 2 && parseInt(rank) > fieldRank) {
+                            var cards = hand.filter(card => getCardRank(card) === parseInt(rank)).slice(0, 2);
+                            if (!hasTooManyJokers(cards)) {
+                                validPlays.push(cards);
+                            }
+                        }
+                    }
+                }
+                if (!fieldType || fieldType === "triple") {
+                    var rankCounts = {};
+                    hand.forEach(card => {
+                        var rank = getCardRank(card);
+                        rankCounts[rank] = (rankCounts[rank] || 0) + 1;
+                    });
+                    for (var rank in rankCounts) {
+                        if (rankCounts[rank] >= 3 && parseInt(rank) > fieldRank) {
+                            var cards = hand.filter(card => getCardRank(card) === parseInt(rank)).slice(0, 3);
+                            if (!hasTooManyJokers(cards)) {
+                                validPlays.push(cards);
+                            }
+                        }
+                    }
+                }
+                if (!fieldType || fieldType === "quadruple") {
+                    var rankCounts = {};
+                    hand.forEach(card => {
+                        var rank = getCardRank(card);
+                        rankCounts[rank] = (rankCounts[rank] || 0) + 1;
+                    });
+                    for (var rank in rankCounts) {
+                        if (rankCounts[rank] >= 4 && parseInt(rank) > fieldRank) {
+                            var cards = hand.filter(card => getCardRank(card) === parseInt(rank)).slice(0, 4);
+                            if (!hasTooManyJokers(cards)) {
+                                validPlays.push(cards);
+                            }
+                        }
+                    }
+                }
+                if (!fieldType || fieldType === "scale") {
+                    var ranks = hand.filter(card => !card.includes("joker")).map(card => getCardRank(card, true)).sort((a, b) => a - b);
+                    var length = fieldType ? _field.length : 5;
+                    for (var i = 0; i <= ranks.length - length; i++) {
+                        var valid = true;
+                        var sequence = ranks.slice(i, i + length);
+                        for (var j = 1; j < sequence.length; j++) {
+                            if (sequence[j] !== sequence[j - 1] + 1) {
+                                valid = false;
+                                break;
+                            }
+                        }
+                        if (valid && (!fieldType || sequence[sequence.length - 1] > fieldRank)) {
+                            var cards = hand.filter(card => {
+                                var r = getCardRank(card, true);
+                                return sequence.includes(r);
+                            }).slice(0, length);
+                            if (cards.length === length) validPlays.push(cards);
+                        }
+                    }
+
+                    if (validPlays.length > 0) {
+                        validPlays.sort((a, b) => {
+                            var rankA = getCardRank(a[0], fieldType === "scale");
+                            var rankB = getCardRank(b[0], fieldType === "scale");
+                            return rankA - rankB;
+                        });
+                    }
+                }
+            }
+
+            validPlays = validPlays.filter(play => !hasTooManyJokers(play));
+
+            var play = validPlays.length > 0 ? validPlays[0] : [];
+            console.log("AI valid plays:", validPlays, "Chosen play:", play);
+            return play;
+        }
+
+        function checkGameEnd() {
+            var outCount = _isOut.filter(out => out).length;
+
+            if (outCount >= 3) {
+                console.log("Game ended, _outOrder:", _outOrder, "_isOut:", _isOut);
+
+                var placements = [];
+                var playerPosition = 0;
+                var position = 1;
+
+                for (var i = 0; i < _outOrder.length; i++) {
+                    var playerIndex = _outOrder[i];
+                    var playerName = playerIndex === 0 ? "You" : `Opponent ${playerIndex}`;
+                    placements.push(`${position}. ${playerName}`);
+                    if (playerIndex === 0) {
+                        playerPosition = position;
+                    }
+                    position++;
+                }
+
+                for (var i = 0; i < 4; i++) {
+                    if (!_isOut[i]) {
+                        var playerName = i === 0 ? "You" : `Opponent ${i}`;
+                        placements.push(`${position}. ${playerName} (Still In)`);
+                        if (i === 0) {
+                            playerPosition = position;
+                        }
+                        position++;
+                    }
+                }
+
+                var resultMessage = "";
+                switch (playerPosition) {
+                    case 1:
+                        resultMessage = "Congratulations! You Win!";
+                        break;
+                    case 2:
+                        resultMessage = "Nice job! You came in 2nd place.";
+                        break;
+                    case 3:
+                        resultMessage = "You came in 3rd place.";
+                        break;
+                    case 4:
+                        resultMessage = "You lost the game.";
+                        break;
+                    default:
+                        resultMessage = "Game ended.";
+                }
+
+                var overlay = document.createElement('div');
+                overlay.style.position = 'fixed';
+                overlay.style.top = '0';
+                overlay.style.left = '0';
+                overlay.style.width = '100%';
+                overlay.style.height = '100%';
+                overlay.style.backgroundColor = 'rgba(0, 0, 0, 0.7)';
+                overlay.style.zIndex = '9999';
+                overlay.style.display = 'flex';
+                overlay.style.justifyContent = 'center';
+                overlay.style.alignItems = 'center';
+                overlay.style.cursor = 'pointer';
+
+                var resultsContainer = document.createElement('div');
+                resultsContainer.style.backgroundColor = 'white';
+                resultsContainer.style.padding = '30px';
+                resultsContainer.style.borderRadius = '10px';
+                resultsContainer.style.textAlign = 'center';
+                resultsContainer.style.maxWidth = '80%';
+                resultsContainer.style.boxShadow = '0 5px 15px rgba(0,0,0,0.3)';
+
+                resultsContainer.innerHTML = `
+                                            <h2 style="margin-top: 0; color: #333;">Game Over</h2>
+                                            <h3 style="color: #555;">${resultMessage}</h3>
+                                            <div style="margin: 20px 0; text-align: left;">
+                                                ${placements.join("<br>")}
+                                            </div>
+                                            <p style="margin-bottom: 0; color: #777; font-style: italic;">Click anywhere to return to game selection</p>
+                                        `;
+
+                overlay.appendChild(resultsContainer);
+                document.body.appendChild(overlay);
+
+                overlay.addEventListener('click', function () {
+                    window.location.href = "/GameMode";
+                });
+
+                return true;
+            }
+
+                return false;
+        }
+
+        function opponentTurn() {
+            if (checkGameEnd()) {
+                console.log("Game ended, not continuing turns");
+                return;
+            }
+
+            console.log("opponentTurn started, current turn:", _turn, "Players out:", _isOut);
+
+            if (_isOut[_turn]) {
+                console.log(`Current player ${_turn} is out, skipping to next player`);
+                nextTurn();
+                return;
+            }
+
+            setTimeout(() => {
+                if (_turn > 0 && !_isOut[_turn]) {
+                    var opponentIndex = _turn - 1;
+                    var opponentHand = _opponentHands[opponentIndex];
+                    console.log(`Opponent ${opponentIndex + 1} hand:`, opponentHand);
+                    var play = simpleAIPlay(opponentHand);
+                    console.log(`Opponent ${opponentIndex + 1} decided play:`, play);
+
+                    if (play.length > 0) {
+                        clearPreviousField();
+                        var dist = 0;
+                        var rndX = Math.floor(Math.random() * 100);
+                        var rndY = Math.floor(Math.random() * 100);
+                        play.forEach(function (element) {
+                            var index = element.split("|")[0];
+                            console.log(`Animating card ${index} to field`);
+                            deck.cards[index].animateTo({
+                                delay: 500 + dist,
+                                duration: 500,
+                                ease: 'quartOut',
+                                x: rndX + 450 + dist,
+                                y: rndY + 100
+                            });
+                            deck.cards[index].setSide('front');
+                            dist += 40;
+                        });
+                        _previousField = _field.slice();
+                        _field = play.slice();
+                        _opponentHands[opponentIndex] = opponentHand.filter(card => !play.includes(card));
+                        _playersPassed = 0;
+                        _lastPlayer = _turn;
+                        console.log(`Opponent ${opponentIndex + 1} new hand:`, _opponentHands[opponentIndex]);
+
+                        if (_opponentHands[opponentIndex].length === 0) {
+                            _isOut[_turn] = true;
+                            _outOrder.push(_turn);
+                            customNotify(`Opponent ${_turn} is out!`, "info");
+                            console.log(`Opponent ${_turn} is out, _outOrder:`, _outOrder);
+
+                            if (checkGameEnd()) {
+                                return;
+                            }
+                        }
+                        _isFirstPlay = false; // Update first play flag after opponent's play
+                    } else {
+                        _playersPassed++;
+                        console.log(`Opponent ${opponentIndex + 1} passed, playersPassed:`, _playersPassed);
+                        if (_playersPassed === 3) {
+                            clearPreviousField();
+                            clearCurrentField();
+                            _field = [];
+                            _previousField = [];
+                            _playersPassed = 0;
+                            _turn = _lastPlayer;
+                            console.log("Field cleared, all passed, turn set to last player:", _lastPlayer);
+
+                            if (_isOut[_lastPlayer]) {
+                                console.log("Last player is out, finding next valid player");
+                                nextValidPlayer();
+                                return;
+                            }
+
+                            if (_lastPlayer === 0) {
+                                setTimeout(() => clearPreviousField(), 1000);
+                                customNotify("Everyone passed! It is your turn.", "success");
+                            } else {
+                                customNotify(`Everyone passed! Opponent ${_lastPlayer} will start.`, "info");
+                                opponentTurn();
+                            }
+                            return;
+                        }
+                    }
+                } else {
+                    console.log(`Skipping turn ${_turn} - invalid or player is out:`, _isOut[_turn]);
+                }
+
+                nextTurn();
+            }, 1000);
+        }
+
+        function nextTurn() {
+            _turn = (_turn + 1) % 4;
+            console.log("Turn advanced to:", _turn);
+
+            var loopGuard = 0;
+            while (_isOut[_turn] && loopGuard < 4) {
+                _turn = (_turn + 1) % 4;
+                console.log("Skipping out player, new turn:", _turn);
+                loopGuard++;
+            }
+
+            if (loopGuard >= 4) {
+                console.log("All players appear to be out, ending game");
+                checkGameEnd();
+                return;
+            }
+
+            if (_turn === 0 && !_isOut[0]) {
+                setTimeout(() => clearPreviousField(), 1000);
+                customNotify("It is your turn.", "success");
+                console.log("Player's turn activated");
+            } else {
+                console.log("Continuing to next opponent turn");
+                opponentTurn();
+            }
+        }
+
+        function nextValidPlayer() {
+            var loopGuard = 0;
+            while (_isOut[_turn] && loopGuard < 4) {
+                _turn = (_turn + 1) % 4;
+                console.log("Finding next valid player, checking:", _turn);
+                loopGuard++;
+            }
+
+            if (loopGuard >= 4) {
+                console.log("All players appear to be out, ending game");
+                checkGameEnd();
+                return;
+            }
+
+            if (_turn === 0 && !_isOut[0]) {
+                setTimeout(() => clearPreviousField(), 1000);
+                customNotify("It is your turn.", "success");
+                console.log("Player's turn activated");
+            } else {
+                console.log("Continuing to next opponent turn");
+                opponentTurn();
+            }
+        }
+
+        function performPlay() {
+            console.log("performPlay called, _turn:", _turn, "_isOut[0]:", _isOut[0], "_play:", _play);
+            if (_turn === 0 && !_isOut[0]) {
+                var jokerCount = _play.filter(card => card.includes("joker")).length;
+                if (jokerCount > 1) {
+                    customNotify("You cannot play more than one joker at a time!", "error");
+                    resetCards();
+                    return;
+                }
+
+                if (validatePlay()) {
+                    clearPreviousField();
+                    var dist = 0;
+                    var rndX = Math.floor(Math.random() * 100);
+                    var rndY = Math.floor(Math.random() * 100);
+                    _play.forEach(function (element) {
+                        var index = element.split("|")[0];
+                        console.log("Animating card to field, index:", index);
+                        deck.cards[index].animateTo({
+                            delay: 500 + dist,
+                            duration: 500,
+                            ease: 'quartOut',
+                            x: rndX + 450 + dist,
+                            y: rndY + 100
+                        });
+                        deck.cards[index].setSide('front');
+                        dist += 40;
+                    });
+                    _previousField = _field.slice();
+                    _field = _play.slice();
+                    rmPlayFromHand();
+                    _play = [];
+                    _playSize = 0;
+                    _playersPassed = 0;
+                    _lastPlayer = 0;
+                    _isFirstPlay = false; // Update first play flag after player's play
+
+                    if (_hand.length === 0) {
+                        _isOut[0] = true;
+                        _outOrder.push(0);
+                        customNotify("Congrats, you are out!", "success");
+                        console.log("Player is out, _outOrder:", _outOrder);
+
+                        if (checkGameEnd()) {
+                            return;
+                        }
+                    }
+
+                    _turn = 1;
+                    console.log("Player played, advancing to opponent turn:", _turn);
+                    opponentTurn();
+                } else {
+                    customNotify(_isFirstPlay && _hand.some(card => card.includes("spades") && card.includes("rank3"))
+                        ? "You must include the 3 of spades in your first play!"
+                        : "That is an illegal move :(", "error");
+                    resetCards();
+                }
+            } else {
+                customNotify("Please wait for your turn!!", "error");
+            }
+        }
+
+        function replayGame() {
+            _hand = [];
+            _opponentHands = [[], [], []];
+            _play = [];
+            _playSize = 0;
+            _field = [];
+            _previousField = [];
+            _turn = 0;
+            _isOut = [false, false, false, false];
+            _zIndex = 0;
+            _playersPassed = 0;
+            _outOrder = [];
+            _lastPlayer = 0;
+            _isFirstPlay = true; // Reset first play flag
+
+            $('#container').empty();
+            $('#fieldContainer').empty();
+
+            assignOpponentProfilePictures();
+
+            $.ajax({
+                url: '/SinglePlayerGame?handler=ResetDeck',
+                method: 'POST',
+                headers: { "RequestVerificationToken": $('input[name="__RequestVerificationToken"]').val() },
+                success: function () {
+                    $.ajax({
+                        url: '/SinglePlayerGame?handler=GetInitialHands',
+                        method: 'POST',
+                        headers: { "RequestVerificationToken": $('input[name="__RequestVerificationToken"]').val() },
+                        contentType: 'application/json; charset=utf-8',
+                        dataType: 'json',
+                        success: function (response) {
+                            deck = Deck(false);
+                            blackJoker = Deck.Card(52);
+                            redJoker = Deck.Card(53);
+                            blackJoker.setSide('back');
+                            redJoker.setSide('back');
+                            deck.cards.push(blackJoker);
+                            deck.cards.push(redJoker);
+                            deck.mount($container);
+                            blackJoker.mount(deck.$el);
+                            redJoker.mount(deck.$el);
+                            console.log("Initial hands response:", response);
+
+                            console.log("/////////////////////////////////////////////////////");
+                            const hands = response.hands;
+                            console.log("/////////////////////////////////////////////////////");
+
+                            const profilePicture = response.profilePicture;
+
+                            if (profilePicture) {
+                                document.getElementById('player-profile').src = profilePicture;
+                                console.log("Updated player profile picture to:", profilePicture);
+                            }
+                            console.log("/////////////////////////////////////////////////////");
+                            console.log("list of hands :", hands);
+                            console.log("/////////////////////////////////////////////////////");
+
+                            _hand = hands[3];
+                            _opponentHands[0] = hands[2];
+                            _opponentHands[1] = hands[1];
+                            _opponentHands[2] = hands[0];
+
+                            spreadCards();
+
+                            setTimeout(function () {
+                                if (_hand.some(card => card.includes("spades") && card.includes("rank3"))) {
+                                    _turn = 0;
+                                    customNotify("You have the 3 of spades, you must play it to start the game.", "info");
+                                } else if (_opponentHands[0].some(card => card.includes("spades") && card.includes("rank3"))) {
+                                    _turn = 1;
+                                    customNotify("Opponent 1 has the 3 of spades, they will start.", "info");
+                                    opponentTurn();
+                                } else if (_opponentHands[1].some(card => card.includes("spades") && card.includes("rank3"))) {
+                                    _turn = 2;
+                                    customNotify("Opponent 2 has the 3 of spades, they will start.", "info");
+                                    opponentTurn();
+                                } else if (_opponentHands[2].some(card => card.includes("spades") && card.includes("rank3"))) {
+                                    _turn = 3;
+                                    customNotify("Opponent 3 has the 3 of spades, they will start.", "info");
+                                    opponentTurn();
+                                }
+                            }, 2500);
+                        },
+                        error: function (xhr, status, error) {
+                            console.error("Error fetching new hands:", error);
+                        }
+                    });
+                },
+                error: function (xhr, status, error) {
+                    console.error("Error resetting deck:", error);
+                }
+            });
+        }
+    </script>
+</body>
+</html>

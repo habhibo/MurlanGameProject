@@ -1,0 +1,137 @@
+/* style.css */
+
+/* Force Black Background */
+html, body {
+    background-color: #000000 !important;
+    color: #ffffff !important;
+    font-family: 'Open Sans', sans-serif;
+    margin: 0;
+    padding: 0;
+}
+
+/* Navbar Styles */
+#custom-bootstrap-menu.navbar-default {
+    background-color: #1a1a1a !important;
+    border: none !important;
+    font-size: 14px;
+    transition: all 0.3s ease;
+}
+
+    #custom-bootstrap-menu.navbar-default .navbar-brand {
+        color: #ffffff !important;
+        text-transform: uppercase;
+        font-family: 'Times New Roman', Times, serif;
+        font-size: x-large;
+        font-weight: bold;
+    }
+
+    #custom-bootstrap-menu.navbar-default .navbar-nav > li > a {
+        color: #ffffff !important;
+        background-color: transparent !important;
+    }
+
+        #custom-bootstrap-menu.navbar-default .navbar-nav > li > a:hover,
+        #custom-bootstrap-menu.navbar-default .navbar-nav > li > a:focus {
+            color: #99ffcc !important;
+            background-color: transparent !important;
+        }
+
+    #custom-bootstrap-menu.navbar-default .navbar-toggle {
+        border-color: #ddd !important;
+    }
+
+        #custom-bootstrap-menu.navbar-default .navbar-toggle:hover,
+        #custom-bootstrap-menu.navbar-default .navbar-toggle:focus {
+            background-color: #ddd !important;
+        }
+
+        #custom-bootstrap-menu.navbar-default .navbar-toggle .icon-bar {
+            background-color: #888 !important;
+        }
+
+/* Container and Text Styles */
+.container {
+    padding: 20px;
+}
+
+h1, legend {
+    color: #ffffff !important;
+    font-weight: lighter;
+    font-size: 33px;
+    text-align: center;
+}
+
+/* Professional Button Styles */
+.btn-custom {
+    background-color: #ffffff !important;
+    color: #000000 !important; /* Black text */
+    border: 2px solid #ffffff !important;
+    border-radius: 8px; /* Slightly rounded edges */
+    padding: 12px 30px; /* Larger padding for a premium feel */
+    font-size: 16px;
+    font-weight: 700; /* Bolder text */
+    text-transform: uppercase;
+    letter-spacing: 1px; /* Spacing for elegance */
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3); /* Subtle shadow for depth */
+    transition: all 0.3s ease;
+}
+
+    .btn-custom:hover {
+        background-color: #e0e0e0 !important; /* Light gray on hover */
+        color: #000000 !important; /* Still black text */
+        border-color: #ffffff !important;
+        box-shadow: 0 6px 15px rgba(255, 255, 255, 0.2); /* Enhanced shadow on hover */
+        transform: translateY(-2px); /* Slight lift effect */
+    }
+
+/* Form Elements */
+.form-control {
+    background-color: #1a1a1a !important;
+    color: #ffffff !important;
+    border: 1px solid #ffffff !important;
+    border-radius: 4px;
+    box-shadow: none !important;
+    transition: all 0.3s ease;
+}
+
+    .form-control:focus {
+        background-color: #1a1a1a !important;
+        color: #ffffff !important;
+        border-color: #ffffff !important;
+        box-shadow: 0 0 5px rgba(255, 255, 255, 0.5) !important;
+        outline: 0;
+    }
+
+.control-label {
+    color: #ffffff !important;
+}
+
+/* Radio and Dropdown */
+.radio, .radio label {
+    color: #ffffff !important;
+    margin: 0;
+    padding: 0;
+}
+
+.ddl {
+    background-color: #1a1a1a !important;
+    color: #ffffff !important;
+    border: 1px solid #ffffff !important;
+    border-radius: 4px;
+}
+
+/* Input Placeholder Styles */
+input[type="text"]:-moz-placeholder,
+input[type="password"]:-moz-placeholder {
+    color: #999999 !important;
+}
+
+input[type="text"]:-ms-input-placeholder,
+input[type="password"]:-ms-input-placeholder {
+    color: #999999 !important;
+}
+
+input[type="text"]::-webkit-input-placeholder,
+input[type="password"]::-webkit-input-placeholder {
+    color: #999999 !important;
+}

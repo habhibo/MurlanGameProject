@@ -1,0 +1,354 @@
+﻿@page
+@model MuranGameProject.Pages.ProfileModel
+@{
+    Layout = null;
+    ViewData["Title"] = "Profile";
+}
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Profile - Murlan</title>
+    <link href="~/css/bootstrap.min.css" rel="stylesheet" />
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+        html, body {
+            background-image: url('/images/background.jpg') !important;
+            background-size: cover !important;
+            background-position: center !important;
+            background-attachment: fixed !important; /* This helps keep the background fixed when scrolling */
+            background-repeat: no-repeat !important;
+            color: #ffffff !important;
+            font-family: 'Montserrat', sans-serif;
+            margin: 0;
+            padding: 0;
+            min-height: 100vh;
+            overflow-x: hidden;
+            overflow-y: auto; /* Enable vertical scrolling */
+        }
+
+        #custom-bootstrap-menu.navbar-default {
+            background-color: rgba(10, 10, 10, 0.8) !important;
+            border: none !important;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.5);
+            padding: 15px 0;
+        }
+
+            #custom-bootstrap-menu.navbar-default .navbar-brand {
+                color: #ffffff !important;
+                text-transform: uppercase;
+                font-family: 'Montserrat', sans-serif;
+                font-size: 28px;
+                font-weight: 700;
+                letter-spacing: 2px;
+                text-shadow: 0 0 10px rgba(255, 255, 255, 0.3);
+                transition: all 0.3s ease;
+            }
+
+                #custom-bootstrap-menu.navbar-default .navbar-brand:hover {
+                    transform: scale(1.05);
+                    text-shadow: 0 0 15px rgba(255, 255, 255, 0.5);
+                }
+
+        .container {
+            padding: 10px;
+        }
+
+        h1 {
+            color: #ffffff !important;
+            font-size: 42px;
+            text-align: center;
+            text-transform: uppercase;
+            letter-spacing: 3px;
+            margin-top: 10px;
+            margin-bottom: 30px;
+            font-weight: 700;
+            text-shadow: 0 0 15px rgba(255, 255, 255, 0.3);
+        }
+
+        .back-button {
+            padding: 0;
+            width: 50px;
+            height: 50px;
+            border: none;
+            background-color: transparent !important;
+            margin-left: 20px;
+            cursor: pointer;
+            position: relative;
+            transition: all 0.3s ease;
+        }
+
+            .back-button img {
+                width: 100%;
+                height: 100%;
+                object-fit: contain;
+                filter: drop-shadow(0 0 5px rgba(255, 255, 255, 0.3));
+            }
+
+            .back-button:hover {
+                transform: scale(1.1);
+            }
+
+        .profile-container {
+            max-width: 600px;
+            margin: 0 auto;
+            margin-bottom: 40px; /* Add bottom margin for better spacing */
+            background: rgba(10, 10, 10, 0.8);
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 5px 20px rgba(0, 0, 0, 0.5);
+        }
+
+        .profile-picture {
+            width: 150px;
+            height: 150px;
+            border-radius: 50%;
+            object-fit: cover;
+            display: block;
+            margin: 0 auto 20px;
+            border: 3px solid #ffffff;
+            box-shadow: 0 0 10px rgba(255, 255, 255, 0.3);
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-control {
+            background-color: #1a1a1a !important;
+            color: #ffffff !important;
+            border: 1px solid #ffffff !important;
+            border-radius: 4px;
+            box-shadow: none !important;
+            transition: all 0.3s ease;
+        }
+
+            .form-control:focus {
+                background-color: #1a1a1a !important;
+                color: #ffffff !important;
+                border-color: #ffffff !important;
+                box-shadow: 0 0 5px rgba(255, 255, 255, 0.5) !important;
+            }
+
+        .btn-custom {
+            background-color: #ffffff !important;
+            color: #000000 !important;
+            border: 2px solid #ffffff !important;
+            border-radius: 8px;
+            padding: 12px 30px;
+            font-size: 16px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+
+            .btn-custom:hover {
+                background-color: #e0e0e0 !important;
+                color: #000000 !important;
+                box-shadow: 0 6px 15px rgba(255, 255, 255, 0.2);
+                transform: translateY(-2px);
+            }
+
+        .profile-picture-selector {
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+
+        .profile-picture-option {
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            object-fit: cover;
+            cursor: pointer;
+            border: 2px solid transparent;
+            transition: all 0.3s ease;
+        }
+
+            .profile-picture-option:hover,
+            .profile-picture-option.selected {
+                border-color: #ffffff;
+                box-shadow: 0 0 10px rgba(255, 255, 255, 0.5);
+            }
+
+        .alert {
+            margin-top: 20px;
+            text-align: center;
+        }
+
+        .overlay {
+            position: fixed; /* Changed from absolute to fixed */
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(to bottom, rgba(0,0,0,0.3), rgba(0,0,0,0.7));
+            z-index: 0;
+            pointer-events: none; /* Allow clicks to pass through */
+        }
+
+        .page-content {
+            position: relative;
+            z-index: 1;
+        }
+
+        @@media (max-width: 768px) {
+            h1 {
+                font-size: 32px;
+                margin-top: 5px;
+            }
+
+            .profile-container {
+                padding: 20px;
+            }
+
+            .profile-picture {
+                width: 120px;
+                height: 120px;
+            }
+
+            .profile-picture-option {
+                width: 60px;
+                height: 60px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Dark overlay -->
+    <div class="overlay"></div>
+
+    <!-- Page content -->
+    <div class="page-content">
+        <div id="custom-bootstrap-menu" class="navbar navbar-default" role="navigation">
+            <div class="container">
+                <div class="navbar-header">
+                    <a class="navbar-brand" href="#">♠ Murlan</a>
+                </div>
+            </div>
+        </div>
+
+        <form method="post" style="display: inline;">
+            <button asp-page="/GameMode" class="back-button">
+                <img src="/images/back.png" alt="Back" />
+            </button>
+        </form>
+
+        <div class="container">
+            <h1>Your Profile</h1>
+            <div class="profile-container">
+                <img src="@Model.ProfilePicture" alt="Profile Picture" class="profile-picture" />
+
+                <!-- Profile Picture Selector -->
+                <form method="post" asp-page-handler="UpdatePicture" id="updatePictureForm">
+                    <div class="profile-picture-selector">
+                        @for (int i = 1; i <= 5; i++)
+                        {
+                            var picturePath = $"/images/profile{i}.png";
+                            <img src="@picturePath" alt="Profile @i" class="profile-picture-option @(Model.ProfilePicture == picturePath ? "selected" : "")"
+                                 onclick="selectProfilePicture('@picturePath');" />
+                        }
+                    </div>
+                    <input type="hidden" asp-for="SelectedPicture" id="selectedPicture" />
+                </form>
+
+                <!-- User Information -->
+                <div class="form-group">
+                    <label>Email</label>
+                    <input asp-for="Email" class="form-control" readonly />
+                </div>
+                <div class="form-group">
+                    <label>Name</label>
+                    <input asp-for="Name" class="form-control" readonly />
+                </div>
+                <div class="form-group">
+                    <label>Surname</label>
+                    <input asp-for="Surname" class="form-control" readonly />
+                </div>
+                <div class="form-group">
+                    <label>Registration Date</label>
+                    <input asp-for="RegistrationDate" class="form-control" readonly />
+                </div>
+
+                <!-- Change Password Form -->
+                <h3>Change Password</h3>
+                <form method="post" asp-page-handler="ChangePassword">
+                    <div class="form-group">
+                        <input asp-for="CurrentPassword" class="form-control" type="password" placeholder="Current Password" />
+                    </div>
+                    <div class="form-group">
+                        <input asp-for="NewPassword" class="form-control" type="password" placeholder="New Password" />
+                    </div>
+                    <div class="form-group">
+                        <input asp-for="ConfirmNewPassword" class="form-control" type="password" placeholder="Confirm New Password" />
+                    </div>
+                    <div class="form-group">
+                        <button type="submit" class="btn-custom">Change Password</button>
+                    </div>
+                </form>
+
+                <!-- Messages -->
+                @if (!string.IsNullOrEmpty(Model.ErrorMessage))
+                {
+                    <div class="alert alert-danger">@Model.ErrorMessage</div>
+                }
+                @if (!string.IsNullOrEmpty(Model.SuccessMessage))
+                {
+                    <div class="alert alert-success">@Model.SuccessMessage</div>
+                }
+            </div>
+        </div>
+    </div>
+
+    <!-- JavaScript to handle profile picture selection and auto-refresh -->
+    <script>
+        // Function to select a profile picture
+        function selectProfilePicture(path) {
+            document.getElementById('selectedPicture').value = path;
+            // Update selected class for visual feedback
+            const options = document.querySelectorAll('.profile-picture-option');
+            options.forEach(option => {
+                if (option.src.endsWith(path)) {
+                    option.classList.add('selected');
+                } else {
+                    option.classList.remove('selected');
+                }
+            });
+
+            // Submit the form
+            document.getElementById('updatePictureForm').submit();
+        }
+
+        // Check if this is the first load of the page
+        if (!sessionStorage.getItem('profilePageLoaded')) {
+            // Set the flag to prevent this from running again on refresh
+            sessionStorage.setItem('profilePageLoaded', 'true');
+
+            // Find the currently selected profile picture
+            const selectedPicture = document.querySelector('.profile-picture-option.selected');
+            if (selectedPicture) {
+                // Get its path from the src attribute
+                const pictureSrc = selectedPicture.getAttribute('src');
+
+                // Set a timer to automatically update the profile after 1 second
+                setTimeout(function () {
+                    // Set the selected picture value and submit the form
+                    document.getElementById('selectedPicture').value = pictureSrc;
+                    document.getElementById('updatePictureForm').submit();
+                }, 1000);
+            } else {
+                // If no picture is selected, default to the first one
+                setTimeout(function () {
+                    //document.getElementById('selectedPicture').value = '/images/profile3.png';
+                    document.getElementById('updatePictureForm').submit();
+                }, 1000);
+            }
+        }
+    </script>
+</body>
+</html>

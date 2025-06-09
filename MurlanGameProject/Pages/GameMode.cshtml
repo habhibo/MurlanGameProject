@@ -1,0 +1,254 @@
+﻿@page
+@model MuranGameProject.Pages.GameModeModel
+@{
+    Layout = null;
+    ViewData["Title"] = "Choose Game Mode";
+}
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Choose Game Mode - Muran</title>
+    <link href="~/css/bootstrap.min.css" rel="stylesheet" />
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+        html, body {
+            background-image: url('/images/background.jpg') !important;
+            background-size: cover !important;
+            background-position: center !important;
+            background-repeat: no-repeat !important;
+            color: #ffffff !important;
+            font-family: 'Montserrat', sans-serif;
+            margin: 0;
+            padding: 0;
+            height: 100vh;
+            overflow-x: hidden;
+        }
+
+        #custom-bootstrap-menu.navbar-default {
+            background-color: rgba(10, 10, 10, 0.8) !important;
+            border: none !important;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.5);
+            padding: 15px 0;
+        }
+
+            #custom-bootstrap-menu.navbar-default .navbar-brand {
+                color: #ffffff !important;
+                text-transform: uppercase;
+                font-family: 'Montserrat', sans-serif;
+                font-size: 28px;
+                font-weight: 700;
+                letter-spacing: 2px;
+                text-shadow: 0 0 10px rgba(255, 255, 255, 0.3);
+                transition: all 0.3s ease;
+            }
+
+                #custom-bootstrap-menu.navbar-default .navbar-brand:hover {
+                    transform: scale(1.05);
+                    text-shadow: 0 0 15px rgba(255, 255, 255, 0.5);
+                }
+
+        .container {
+            padding: 10px;
+        }
+
+        h1 {
+            color: #ffffff !important;
+            font-size: 42px;
+            text-align: center;
+            text-transform: uppercase;
+            letter-spacing: 3px;
+            margin-top: 10px;
+            margin-bottom: 30px;
+            font-weight: 700;
+            text-shadow: 0 0 15px rgba(255, 255, 255, 0.3);
+        }
+
+        .back-button {
+            padding: 0;
+            width: 50px;
+            height: 50px;
+            border: none;
+            background-color: transparent !important;
+            margin-left: 20px;
+            cursor: pointer;
+            position: relative;
+            transition: all 0.3s ease;
+        }
+
+            .back-button img {
+                width: 100%;
+                height: 100%;
+                object-fit: contain;
+                filter: drop-shadow(0 0 5px rgba(255, 255, 255, 0.3));
+            }
+
+            .back-button:hover {
+                transform: scale(1.1);
+            }
+
+        .game-mode-container {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            flex-wrap: wrap;
+            margin-top: 0px;
+            gap: 20px 60px;
+            max-width: 900px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+        .game-button-wrapper {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin-bottom: 0px;
+        }
+
+        .game-button {
+            background-color: transparent;
+            border: none;
+            padding: 0;
+            position: relative;
+            width: 350px;
+            height: 120px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+            .game-button img {
+                width: 100%;
+                height: 100%;
+                object-fit: contain;
+                border-radius: 12px;
+                box-shadow: 0 5px 20px rgba(0, 0, 0, 0.5);
+            }
+
+            .game-button:hover {
+                transform: translateY(-10px) scale(1.05);
+            }
+
+        .button-label {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: #ffffff;
+            font-size: 28px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            text-shadow: 0 0 10px rgba(0, 0, 0, 0.8);
+            pointer-events: none;
+        }
+
+        .button-title {
+            margin-top: 15px;
+            color: #ffffff;
+            font-size: 25px;
+            font-weight: 600;
+            text-align: center;
+            text-shadow: 0 0 8px rgba(0, 0, 0, 0.6);
+            letter-spacing: 1px;
+        }
+
+        .page-content {
+            position: relative;
+            z-index: 1;
+        }
+
+        .overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(to bottom, rgba(0,0,0,0.3), rgba(0,0,0,0.7));
+            z-index: 0;
+        }
+
+        @@media (max-width: 768px) {
+            .game-mode-container {
+                flex-direction: column;
+                gap: 40px;
+                max-width: 100%;
+            }
+
+            h1 {
+                font-size: 32px;
+                margin-top: 5px;
+            }
+
+            .game-button {
+                width: 280px;
+                height: 80px;
+            }
+
+            .button-label {
+                font-size: 24px;
+            }
+
+            .button-title {
+                font-size: 16px;
+                margin-top: 6px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Dark overlay -->
+    <div class="overlay"></div>
+
+    <!-- Page content -->
+    <div class="page-content">
+        <div id="custom-bootstrap-menu" class="navbar navbar-default" role="navigation">
+            <div class="container">
+                <div class="navbar-header">
+                    <a class="navbar-brand" href="#">♠ Murlan</a>
+                </div>
+            </div>
+        </div>
+
+        <form method="post" style="display: inline;">
+            <button asp-page="/Login" class="back-button">
+                <img src="/images/back.png" alt="Back" />
+            </button>
+        </form>
+
+        <div class="container text-center">
+            <h1>Choose Your Game Mode</h1>
+
+            <div class="game-mode-container">
+                <div class="game-button-wrapper">
+                    <form method="post">
+                        <button asp-page="/SinglePlayerGameMode" class="game-button">
+                            <img src="/images/single-player-btn.png" alt="Single Player" />
+                        </button>
+                    </form>
+                    <p class="button-title">Single Player</p>
+                </div>
+
+                <div class="game-button-wrapper">
+                    <form method="post">
+                        <button asp-page="/Lobby" class="game-button">
+                            <img src="/images/multiplayer-btn.png" alt="Multiplayer" />
+                        </button>
+                    </form>
+                    <p class="button-title">Multiplayer</p>
+                </div>
+
+                <div class="game-button-wrapper">
+                    <form method="post">
+                        <button asp-page="/Profile" class="game-button">
+                            <img src="/images/profile-btn.png" alt="Profile" />
+                        </button>
+                    </form>
+                    <p class="button-title">Profile</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

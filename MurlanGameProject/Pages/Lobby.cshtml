@@ -1,0 +1,84 @@
+﻿@page
+@model MuranGameProject.Pages.LobbyModel
+@{
+    Layout = null;
+    ViewData["Title"] = "Lobby";
+}
+<!DOCTYPE html>
+<style>
+    html, body {
+        background-image: url('/images/background.jpg') !important;
+        background-size: cover !important;
+        background-position: center !important;
+        background-repeat: no-repeat !important;
+        color: #ffffff !important;
+        font-family: 'Open Sans', sans-serif;
+        margin: 0;
+        padding: 0;
+        height: 100vh; /* Ensure the background covers the entire viewport height */
+    }
+
+    .back-button {
+        padding: 0;
+        width: 40px;
+        height: 40px;
+        border: none;
+        background-color: transparent !important;
+        margin-left: 20px;
+        cursor: pointer;
+        position: relative;
+    }
+
+        .back-button img {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+        }
+</style>
+<html>
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Lobby - Murlan</title>
+    <link href="~/css/bootstrap.min.css" rel="stylesheet" />
+    <link href="~/css/font-awesome.min.css" rel="stylesheet" />
+    <link href="~/css/style.css" rel="stylesheet" />
+</head>
+<body>
+    <div id="custom-bootstrap-menu" class="navbar navbar-default" role="navigation">
+        <div class="container">
+            <div class="navbar-header">
+                <a class="navbar-brand" href="#">♠ Murlan</a>
+            </div>
+        </div>
+    </div>
+    <form method="post" style="display: inline;">
+        <button asp-page="/GameMode" class="back-button">
+            <img src="/images/back.png" alt="Back" />
+        </button>
+    </form>
+    <div class="container">
+        <table class="table table-dark">
+            <thead>
+                <tr>
+                    <th scope="col">ID</th>
+                    <th scope="col">Room Name</th>
+                    <th scope="col">Players</th>
+                    <th scope="col">Connect</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>8080</td>
+                    <td>Room Name #1</td>
+                    <td>3</td>
+                    <td><a href="/Game">Go to Game...</a></td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+    <script src="~/lib/jquery/jquery.min.js"></script>
+    <script src="~/js/bootstrap.min.js"></script>
+    <script src="~/js/jquery.backstretch.js"></script>
+</body>
+</html>

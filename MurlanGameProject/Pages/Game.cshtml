@@ -1,0 +1,473 @@
+﻿@page
+@model MuranGameProject.Pages.GameModel
+@{
+    Layout = null;
+    ViewData["Title"] = "Multiplayer Game";
+}
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Multiplayer - Muran</title>
+    <link rel="stylesheet" href="~/lib/deck-of-cards/example.css" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/zebra_dialog@latest/dist/css/flat/zebra_dialog.min.css" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.css" />
+    <style>
+        #playBtn, #passBtn {
+            bottom: 5%;
+            right: 5%;
+            position: fixed;
+        }
+
+        #passBtn {
+            bottom: 12%;
+        }
+
+        #fieldContainer {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+        }
+
+        #container {
+            top: 30%;
+            left: 10%;
+        }
+
+        .card {
+            z-index: 0;
+        }
+
+        .face {
+            cursor: pointer;
+        }
+
+        .btn-custom {
+            background-color: #ffffff !important;
+            color: #000000 !important;
+            border: 2px solid #ffffff !important;
+            border-radius: 8px;
+            padding: 8px 20px;
+            font-size: 14px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+
+            .btn-custom:hover {
+                background-color: #e0e0e0 !important;
+                color: #000000 !important;
+                box-shadow: 0 6px 15px rgba(255, 255, 255, 0.2);
+                transform: translateY(-2px);
+            }
+    </style>
+</head>
+<body>
+    <div id="container"></div>
+    <div id="fieldContainer"></div>
+    <input id="playBtn" class="btn-custom" type="button" value="Play" onclick="performPlay()" />
+    <input id="passBtn" class="btn-custom" type="button" value="Pass" onclick="passPlay()" />
+
+    @Html.AntiForgeryToken()
+
+    <script src="~/lib/jquery/jquery.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.js"></script>
+    <script src="~/lib/deck-of-cards/dist/deck.js"></script>
+    <script src="~/lib/signalr/dist/browser/signalr.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/zebra_dialog/dist/zebra_dialog.min.js"></script>
+    <script>
+        var connection = new signalR.HubConnectionBuilder().withUrl("/cardHub").build();
+        var $container = document.getElementById('container');
+        var $fieldContainer = document.getElementById('fieldContainer');
+        var deck = Deck(false);
+        var blackJoker = Deck.Card(52);
+        var redJoker = Deck.Card(53);
+        blackJoker.setSide('back');
+        redJoker.setSide('back');
+        deck.cards.push(blackJoker);
+        deck.cards.push(redJoker);
+        deck.mount($container);
+        blackJoker.mount(deck.$el);
+        redJoker.mount(deck.$el);
+
+        var _hand = [];
+        var _opponentHands = [[], [], []];
+        var _play = [];
+        var _playSize = 0;
+        var _field = [];
+        var _previousField = [];
+        var _turn = false;
+        var _isOut = false;
+        var _zIndex = 0;
+        var _playersPassed = 0;
+
+        toastr.options = {
+            "closeButton": true,
+            "positionClass": "toast-top-right",
+            "timeOut": "3000",
+            "progressBar": true
+        };
+
+        function customNotify(message, type) {
+            switch (type) {
+                case "info": toastr.info(message); break;
+                case "success": toastr.success(message); break;
+                case "error": toastr.error(message); break;
+                default: toastr.info(message);
+            }
+        }
+
+        deck.cards[1].unmount();
+
+        connection.start().then(() => {
+            console.log("Connected to SignalR hub");
+            connection.invoke("JoinRoom", "8080").then(() => console.log("Joined room 8080"));
+            connection.invoke("CallTheSpread");
+        }).catch(err => console.error("Connection failed:", err));
+
+        connection.on("recieveHand", (id, cards, turn) => {
+            _turn = turn;
+            if (cards) {
+                _hand = cards;
+                spreadCards();
+                console.log("Player hand:", _hand);
+                if (turn) customNotify("You have the 3 of spades, proceed to start the game.", "info");
+            }
+        });
+
+        connection.on("p1Hand", (id, cards) => {
+            _opponentHands[0] = cards;
+            spreadOpponentCards(0);
+            console.log("Opponent 1 hand:", _opponentHands[0]);
+        });
+
+        connection.on("p2Hand", (id, cards) => {
+            _opponentHands[1] = cards;
+            spreadOpponentCards(1);
+            console.log("Opponent 2 hand:", _opponentHands[1]);
+        });
+
+        connection.on("p3Hand", (id, cards) => {
+            _opponentHands[2] = cards;
+            spreadOpponentCards(2);
+            console.log("Opponent 3 hand:", _opponentHands[2]);
+        });
+
+        connection.on("spreadCards", () => {
+            connection.invoke("GetMyHand");
+        });
+
+        connection.on("recievePlay", (id, play, freeHand) => {
+            if (freeHand) {
+                clearPreviousField();
+                _field = [];
+                _playersPassed = 0;
+                console.log("Field cleared by server");
+            } else if (play.length > 0) {
+                clearPreviousField();
+                _previousField = _field.slice();
+                _field = play;
+                var dist = 0;
+                var rndX = Math.floor(Math.random() * 100);
+                var rndY = Math.floor(Math.random() * 100);
+                play.forEach(element => {
+                    var index = element.split("|")[0];
+                    deck.cards[index].animateTo({
+                        delay: 500 + dist,
+                        duration: 500,
+                        ease: 'quartOut',
+                        x: rndX + 450 + dist,
+                        y: rndY + 100
+                    });
+                    deck.cards[index].setSide('front');
+                    dist += 40;
+                });
+                console.log("Received play:", play);
+            }
+        });
+
+        connection.on("enablePlay", (turn) => {
+            if (!_isOut) {
+                _turn = turn;
+                if (turn) {
+                    setTimeout(() => clearPreviousField(), 1000);
+                    customNotify("It is your turn.", "success");
+                } else {
+                    console.log("Not your turn");
+                }
+            }
+        });
+
+        connection.on("allOut", (placements) => {
+            var plc = placements.split("|");
+            plc.sort((x, y) => {
+                var xp = parseInt(x.match(/\d+/) || 0);
+                var yp = parseInt(y.match(/\d+/) || 0);
+                return xp === yp ? 0 : xp < yp ? -1 : 1;
+            });
+            toastr.options = {
+                "closeButton": true,
+                "positionClass": "toast-top-right",
+                "timeOut": "5000",
+                "progressBar": true,
+                "onHidden": () => window.location.replace("/Lobby")
+            };
+            toastr.success(`First Place: ${plc[1]}<br>Second Place: ${plc[2]}<br>Third Place: ${plc[3]}<br>Fourth Place: ${plc[4]}`, "Game Summary");
+            connection.invoke("LeaveRoom", "8080").then(() => console.log("Left room 8080"));
+        });
+
+        $(document).click(function (event) {
+            var div = $(event.target).parent().prop('className');
+            var cl = $(event.target).prop('className');
+            if (cl === 'face' && _turn && !_isOut) {
+                var divS = div.split(" ");
+                _hand.forEach(function (element) {
+                    var elS = element.split("|");
+                    if (divS[2] === elS[3] && divS[1] === elS[2]) {
+                        var index = elS[0];
+                        deck.cards[index].animateTo({
+                            delay: 30,
+                            duration: 300,
+                            ease: 'quartOut',
+                            y: 430
+                        });
+                        _play.push(element);
+                        _playSize++;
+                        console.log("Card added to _play:", _play);
+                    }
+                });
+            }
+        });
+
+        function spreadCards() {
+            var dis = 0;
+            _hand.forEach(function (element) {
+                var elS = element.split("|");
+                var card = deck.cards[elS[0]];
+                if (card) {
+                    if (card.side === 'front') {
+                        card.$el.className = `card ${elS[2]} ${elS[3]}`;
+                    } else {
+                        card.$el.className = 'card';
+                    }
+                    card.$el.style['z-index'] = _zIndex++;
+                    card.animateTo({
+                        delay: 1000 + dis,
+                        duration: 1000,
+                        ease: 'quartOut',
+                        x: 30 + dis,
+                        y: 450
+                    });
+                    dis += 80;
+                }
+            });
+            setTimeout(flipHand, 2500);
+        }
+
+        function spreadOpponentCards(opponentIndex) {
+            var dis = 0;
+            var positions = [
+                { x: 200, y: -80, disStep: 50 },
+                { x: 30, y: 0, disStep: 20 },
+                { x: 1070, y: 0, disStep: 20 }
+            ];
+            var pos = positions[opponentIndex];
+            _opponentHands[opponentIndex].forEach(function (element) {
+                var elS = element.split("|");
+                var card = deck.cards[elS[0]];
+                if (card) {
+                    card.$el.style['z-index'] = _zIndex++;
+                    card.animateTo({
+                        delay: 1000 + dis,
+                        duration: 1000,
+                        ease: 'quartOut',
+                        x: pos.x + dis,
+                        y: pos.y + (opponentIndex === 0 ? 0 : dis)
+                    });
+                    dis += pos.disStep;
+                }
+            });
+        }
+
+        function flipHand() {
+            _hand.forEach(function (element) {
+                var index = element.split("|")[0];
+                deck.cards[index].setSide('front');
+            });
+        }
+
+        function resetCards() {
+            _play.forEach(function (element) {
+                var index = element.split("|")[0];
+                deck.cards[index].animateTo({
+                    delay: 300,
+                    duration: 300,
+                    ease: 'quartOut',
+                    y: 450
+                });
+            });
+            _play = [];
+            _playSize = 0;
+        }
+
+        function clearPreviousField() {
+            _previousField.forEach(function (element) {
+                var index = element.split("|")[0];
+                deck.cards[index].animateTo({
+                    delay: 0,
+                    duration: 300,
+                    ease: 'quartOut',
+                    x: -1000,
+                    y: -1000
+                });
+            });
+            _previousField = [];
+        }
+
+        function validateHand() {
+            var valid = true;
+            if (_play.length === 0) {
+                valid = false;
+            } else if (_play.length < 5) {
+                var crdRank = _play[0].split("|")[1];
+                _play.forEach(function (element) {
+                    if (crdRank.toString() !== element.split("|")[1]) valid = false;
+                });
+            } else {
+                _play.sort((x, y) => {
+                    var xp = parseInt(x.split("|")[1]);
+                    var yp = parseInt(y.split("|")[1]);
+                    return xp === yp ? 0 : xp < yp ? -1 : 1;
+                });
+                var weightFirst = parseInt(_play[0].split("|")[1]);
+                var weightLast = parseInt(_play[_playSize - 1].split("|")[1]);
+                if (weightFirst === 1 && weightLast === 13) {
+                    _play[0] = _play[0].replace("rank1", "rank14");
+                    if (parseInt(_play[1].split("|")[1]) === 2) _play[1] = _play[1].replace("rank2", "rank15");
+                    _play.sort((x, y) => {
+                        var xp = parseInt(x.split("|")[1]);
+                        var yp = parseInt(y.split("|")[1]);
+                        return xp === yp ? 0 : xp < yp ? -1 : 1;
+                    });
+                    weightFirst = parseInt(_play[0].split("|")[1]);
+                    weightLast = parseInt(_play[_playSize - 1].split("|")[1]);
+                }
+                _play.forEach(function (element) {
+                    var suit = element.split("|")[2];
+                    if (suit !== "joker") {
+                        var elWeight = parseInt(element.split("|")[1]);
+                        if (elWeight !== weightFirst) valid = false;
+                        weightFirst++;
+                    } else valid = false;
+                });
+            }
+            return valid;
+        }
+
+        function validatePlay() {
+            var legal = true;
+            if (validateHand()) {
+                if (_field.length > 0) {
+                    if (_play.length === _field.length) {
+                        var suit = _play[0].split("|")[2];
+                        var rank = parseInt(_play[0].split("|")[1]);
+                        var fieldRank = parseInt(_field[0].split("|")[1]);
+                        var fieldSuit = _field[0].split("|")[2];
+                        if (_play.length < 5) {
+                            if (suit === "joker") {
+                                switch (rank) {
+                                    case 1: rank = 16; break;
+                                    case 3: rank = 17; break;
+                                }
+                            } else {
+                                switch (rank) {
+                                    case 1: rank = 14; break;
+                                    case 2: rank = 15; break;
+                                }
+                            }
+                            if (fieldSuit === "joker") {
+                                switch (fieldRank) {
+                                    case 1: fieldRank = 16; break;
+                                    case 3: fieldRank = 17; break;
+                                }
+                            } else {
+                                switch (fieldRank) {
+                                    case 1: fieldRank = 14; break;
+                                    case 2: fieldRank = 15; break;
+                                }
+                            }
+                            if (fieldRank >= rank) legal = false;
+                        }
+                    } else legal = false;
+                }
+            } else legal = false;
+            return legal;
+        }
+
+        function performPlay() {
+            if (_turn && !_isOut) {
+                if (validatePlay()) {
+                    var dist = 0;
+                    var rndX = Math.floor(Math.random() * 100);
+                    var rndY = Math.floor(Math.random() * 100);
+                    _play.forEach(function (element) {
+                        var index = element.split("|")[0];
+                        deck.cards[index].animateTo({
+                            delay: 500 + dist,
+                            duration: 500,
+                            ease: 'quartOut',
+                            x: rndX + 450 + dist,
+                            y: rndY + 100
+                        });
+                        deck.cards[index].setSide('front');
+                        dist += 40;
+                    });
+                    connection.invoke("BroadcastPlay", _play);
+                    _previousField = _field.slice();
+                    _field = _play.slice();
+                    rmPlayFromHand();
+                    _play = [];
+                    _playSize = 0;
+                    _playersPassed = 0;
+                    if (_hand.length === 0) {
+                        _isOut = true;
+                        customNotify("Congrats, you are out!", "success");
+                        connection.invoke("PlayerIsOut");
+                    }
+                } else {
+                    customNotify("That is an illegal move :(", "error");
+                    if (_play.length === 0) resetCards();
+                }
+            } else {
+                customNotify("Please wait for your turn!!", "error");
+            }
+        }
+
+        function passPlay() {
+            if (_turn && !_isOut) {
+                resetCards();
+                _playersPassed++;
+                connection.invoke("BroadcastPlay", []);
+                customNotify("You passed!", "info");
+            } else {
+                customNotify("Please wait for your turn!!", "error");
+            }
+        }
+
+        function rmPlayFromHand() {
+            var newHand = [];
+            _hand.forEach(function (handCard) {
+                var playIsInHand = false;
+                _play.forEach(function (playCard) {
+                    if (handCard.split("|")[0] === playCard.split("|")[0]) playIsInHand = true;
+                });
+                if (!playIsInHand) newHand.push(handCard);
+            });
+            _hand = newHand;
+            console.log("Updated player hand:", _hand);
+        }
+    </script>
+</body>
+</html>
